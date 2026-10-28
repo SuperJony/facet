@@ -40,6 +40,36 @@ registry 托管在 GitHub 仓库 `SuperJony/facet`，有两种装法。
 - 只支持 Base UI 版的 shadcn 项目（`components.json` 的 `style` 是 `base-*`）。`@facet/button` 会覆盖 `ui/button.tsx`。在 Radix 版项目里，原有组件（如 alert-dialog、pagination）给 Button 传的 `asChild` 会报类型错误。
 - 暗色跟随使用方的 `dark` 变体（shadcn 默认是祖先元素上的 `.dark`），两个主题判定方式相同。
 
+### 拟物主题的限制
+
+- **浏览器**：最低 Chrome/Edge 122、Firefox 128、Safari 18（用到 OKLCH 相对颜色、`@property` 和 `color-mix`）。不支持 OKLCH 相对颜色的浏览器算不出 default 和 secondary 的按键面渐变：它们显示纯色的 `--primary`、`--secondary`，default 的描边换成 `color-mix` 调出的深色，悬停和按下时这两种按键面不变色。destructive、outline、ghost 只用到 `color-mix`，在这些浏览器里外观不变。Chrome 119–121 能解析相对颜色，但把 `l` 当成 0–100 来算（MDN 兼容数据，crbug 40940488）。`@supports` 只检查语法，查不出这个问题，所以在这几个版本里 default 的按键面会是 L 约 0.196 的深灰，悬停时反而变暗；文字仍然看得清。
+- **default 不完全等于 `--primary`**：亮色下按键面的 OKLCH 亮度至少是 0.371（Tailwind 的 neutral-700），否则接近黑色的 primary 上看不出明暗渐变。
+- **换颜色要改变量，不能用 `bg-*`**：这一点和 shadcn 原版、基线主题都不同。拟物的按键面是从颜色变量算出来的渐变（background-image），`bg-<颜色>` 只改 background-color，被渐变盖住，看不出变化（ghost 和 link 没有按键面，destructive 的按键面半透明，这三种会透出 `bg-*` 的颜色）。要换颜色，改按键颜色的来源：default 改 `--primary` 和 `--primary-foreground`；destructive 的按键面是半透明的 `--destructive`，文字也是 `--destructive`，所以只改 `--destructive`。只改一个按钮：
+
+  ```tsx
+  <Button className="[--primary:var(--color-blue-600)] [--primary-foreground:white]">保存</Button>
+  <Button variant="destructive" className="[--destructive:var(--color-orange-600)]">移除</Button>
+  ```
+
+- **其他工具类**：`shadow-*`、`ring-*`、`inset-shadow-*` 会替换整条 box-shadow，五层材质阴影都会消失；焦点环是 outline，不受影响。`bg-none`、`bg-linear-*` 会去掉按键面。
+- **焦点环是 outline**：使用方的 `outline-none`、`outline-hidden`，或者全局的 `:focus { outline: none }` 重置，会把拟物的焦点环去掉。基线主题的焦点环是 box-shadow，不受这些影响。
+- **材质参数（`--mat-*`）**：在任一祖先元素上设置即可覆盖默认值。每个参数的单位和影响的 variant 写在 `src/themes/skeuo.css` 的文件头；大多数只影响 default。px 参数必须带 `px`，百分比参数写纯数字（9 表示 9%）。写错单位不会报错，只在用到这个参数的 variant 和状态下出问题（"阴影全无"指整条 box-shadow 失效，五层材质阴影一起消失）：
+
+  | 参数和错法 | 后果 |
+  |---|---|
+  | `--mat-glow-y`、`--mat-glow-blur` 漏了 `px` | default 在静止和悬停时阴影全无 |
+  | `--mat-contact-y`、`--mat-contact-blur` 漏了 `px` | 所有有按键面的 variant 在静止和悬停时阴影全无，按下时正常 |
+  | `--mat-lift-y`、`--mat-lift-blur`、`--mat-lift-spread` 漏了 `px` | 所有有按键面的 variant 在静止和按下时阴影全无（ghost 悬停时也是） |
+  | `--mat-hover-y`、`--mat-hover-blur`、`--mat-hover-spread` 漏了 `px` | default、secondary、outline、destructive 只在悬停时阴影全无 |
+  | `--mat-press-blur` 漏了 `px` | 所有有按键面的 variant 只在按下时阴影全无 |
+  | `--mat-press-y` 漏了 `px` | 按下时不下沉，阴影正常 |
+  | `--mat-face-step`、`--mat-face-split` 多写 `%` | default 在所有状态下渐变失效，显示纯色 `--primary`，描边变成文字颜色 |
+  | `--mat-hover-lift` 多写 `%` | default 只在悬停时显示纯色 `--primary`，描边正常 |
+  | `--mat-press-darken` 多写 `%` | default 描边变成文字颜色，按下时按键面顶部颜色失效 |
+  | `--mat-edge-darken` 多写 `%` | default 描边变成文字颜色 |
+  | 不透明度参数多写 `%` | 再被除以 100，几乎看不见：`--mat-glow-alpha: 75%` 是 0.0075，`--mat-edge-alpha: 50%` 是 0.005 |
+- **展示站的"复制 CSS"**只导出改过的参数，写在拟物主题的按钮上。亮色改过的参数在暗色那一份里也会带上暗色的值；只在暗色改过的参数只写进暗色那一份。暗色那一份和主题一样，按按钮祖先元素上的 `.dark` 类判断；如果项目用媒体查询或别的选择器切换暗色，要自己把选择器换掉。
+
 ## 路线
 
 1. **里程碑 1：Button**。做基线主题和拟物主题，覆盖 6 个 variant 和 8 个 size；`link` 在拟物主题下只当文字链接处理，不做材质。展示站第一版和它一起做。
@@ -60,7 +90,7 @@ bun install
 bun run dev          # 展示站
 bun run build        # shadcn build（产出 public/r/*.json）+ 类型检查 + 展示站构建
 bun run registry:build  # 只跑 shadcn build
-bun run test:visual  # 截图回归：矩阵 2 主题 × 亮暗 × 4 预览状态，外加 disabled、单个视图、减弱动效和强制颜色模式
+bun run test:visual  # 截图回归：矩阵 2 主题 × 亮暗 × 4 预览状态，外加 disabled、单个视图、减弱动效、强制颜色模式、触屏、aria-invalid / aria-expanded 等；另有材质参数默认值的一致性检查
 ```
 
 - 交付物：`src/components/ui/button.tsx`、`src/themes/base.css`、`src/themes/skeuo.css`，在 `registry.json` 里登记。`public/r/` 是 `@facet` 命名空间读取的文件，随仓库提交：改了组件、主题或 `registry.json` 后，要先跑 `shadcn build`（`bun run registry:build`）再提交。展示站自用的 shadcn 组件装在 `src/showcase/ui/`，不进 registry。
