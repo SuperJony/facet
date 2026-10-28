@@ -1,94 +1,306 @@
 /*
- * facet skeuo theme: a physical key with a base, a face that sinks when pressed, and a highlight.
- * Colors come from the shadcn semantic tokens (--primary, --secondary, ...); the material comes
- * from the --mat-* tokens below. Light and dark differ only in internal --skeuo-* values, so
- * overriding --mat-* (e.g. from a parameter panel) works in both color schemes.
+ * facet skeuo theme: a physical key lit from straight above.
  *
- * The component sets the frame (height, padding, gap, font size). The key is drawn inside it:
- * the face covers the top of the frame, the base shows below it by --mat-depth, and pressing
- * moves the face down. The face surface is the face slot's ::before, positioned against the
- * button, so it fills the frame whatever size or className the button gets.
+ * The key is drawn on the button itself, inside the frame the component sets. One box-shadow
+ * list with a fixed set of layers carries the whole material, so every state change (including
+ * the white inner glow turning into the dark pressed shadow) interpolates layer by layer:
+ *   1 inset top layer   rest/hover: white glow (default) or 1px top highlight;
+ *                       pressed and open (aria-expanded): the dark pressed shadow
+ *   2 inset bottom line 1px dark line (secondary, outline, destructive)
+ *   3 contact shadow    hugs the bottom edge
+ *   4 lift shadow       soft and offset; grows on hover, shrinks back and fades on press
+ *   5 lip               1px white line under a pressed light key
+ * The face is a top-to-bottom gradient; its stops are registered properties so they transition.
+ * Slots: base and highlight are not used and stay hidden; face and label are display: contents.
+ *
+ * The default key is not exactly --primary: in light mode its OKLCH lightness is raised to at
+ * least 0.371 (neutral-700) so the face gradient stays visible on a near-black primary.
+ *
+ * The focus and aria-invalid ring is an outline (3px, shadcn's colors), not a shadow layer.
+ *
+ * Consumer utilities on the button: shadow-*, ring-* and inset-shadow-* replace box-shadow and
+ * remove all five material layers; the focus ring stays. outline-none, outline-hidden or a
+ * global `:focus { outline: none }` reset removes the focus ring (in base.css the ring is a
+ * box-shadow, so they do not). bg-none or bg-linear-* removes the
+ * face. bg-<color> only sets background-color, which the face covers, so it has no visible
+ * effect except on ghost and link (no face) and destructive (translucent face). To recolor a key, change the color it is computed from:
+ * --primary and --primary-foreground for default, --destructive for destructive (its face is a
+ * translucent mix of --destructive and its label is --destructive).
+ *
+ * Browser floor: Chrome/Edge 122, Firefox 128, Safari 18 (OKLCH relative colors, @property,
+ * color-mix). Without OKLCH relative colors, default and secondary cannot compute their face
+ * gradient: they show a flat --primary or --secondary, default gets a color-mix border, and
+ * hover and press do not change their face color. Destructive, outline and ghost only use
+ * color-mix and look the same. Chrome 119-121 parse relative colors but read `l` as 0-100;
+ * @supports cannot detect that, so there the default face is about L 0.196 and darkens on
+ * hover (label still readable).
+ *
+ * Material tokens (--mat-*). The theme declares none; each falls back to this theme's default
+ * for the current color scheme, so a --mat-* set on any ancestor overrides it in both schemes.
+ * Geometry is for the default size and scales with the size.
+ *   unit "%": a plain number read as a percentage (9 means 9%), no % sign
+ * A wrong unit fails without an error, only where and when the token is read ("shadow none"
+ * means the whole box-shadow is dropped, so all five material layers go):
+ *   --mat-glow-y/-blur without px        default at rest and hover: shadow none
+ *   --mat-contact-y/-blur without px     every keyed variant at rest and hover: shadow none
+ *   --mat-lift-y/-blur/-spread without px every keyed variant at rest and pressed (ghost also on
+ *                                        hover): shadow none
+ *   --mat-hover-y/-blur/-spread w/o px   default, secondary, outline, destructive on hover:
+ *                                        shadow none
+ *   --mat-press-blur without px          every keyed variant when pressed: shadow none
+ *   --mat-press-y without px             pressed keys do not sink; shadows are unaffected
+ *   --mat-face-step or -split with %     default in every state: the gradient stops become
+ *                                        transparent, so the flat --primary shows, and the
+ *                                        border becomes the label color
+ *   --mat-hover-lift with %              default on hover: flat --primary; the border is fine
+ *   --mat-press-darken with %            default: border becomes the label color; pressed
+ *                                        face top stop is lost
+ *   --mat-edge-darken with %             default: border becomes the label color
+ *   an alpha token with %                divided by 100 again: --mat-glow-alpha 75% gives
+ *                                        alpha 0.0075, --mat-edge-alpha 50% gives 0.005
+ *   token               unit  affects
+ *   --mat-face-step     %     default               face lightness difference, top to bottom
+ *   --mat-face-split    0-1   default               0 lightens only the top, 1 darkens only the bottom
+ *   --mat-hover-lift    %     default               face lightening on hover
+ *   --mat-press-darken  %     default               pressed top, darker than the rest bottom
+ *   --mat-edge-darken   %     default               border, darker than the pressed top
+ *   --mat-edge-alpha    %     default               border opacity
+ *   --mat-glow-alpha    %     default               white inner glow opacity
+ *   --mat-glow-blur     px    default
+ *   --mat-glow-y        px    default
+ *   --mat-contact-y     px    default, secondary, outline, destructive
+ *   --mat-contact-blur  px    default, secondary, outline, destructive
+ *   --mat-contact-alpha %     default
+ *   --mat-lift-y        px    default, secondary, outline, destructive
+ *   --mat-lift-blur     px    default, secondary, outline, destructive
+ *   --mat-lift-spread   px    default, secondary, outline, destructive
+ *   --mat-lift-alpha    %     default
+ *   --mat-hover-y       px    default, secondary, outline, destructive   lift shadow on hover
+ *   --mat-hover-blur    px    default, secondary, outline, destructive
+ *   --mat-hover-spread  px    default, secondary, outline, destructive
+ *   --mat-press-y       px    every variant except link   how far a pressed key sinks
+ *   --mat-press-blur    px    every variant except link   pressed inner shadow
+ *   --mat-press-alpha   %     default                     pressed inner shadow opacity
+ * Secondary, outline, destructive and ghost use fixed, lighter shadow colors instead of the
+ * alpha tokens.
+ *
  * Import it from the CSS entry that has `@import "tailwindcss"` so @variant resolves.
  */
+@property --skeuo-face-top {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: transparent;
+}
+
+@property --skeuo-face-bottom {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: transparent;
+}
+
 @layer components {
   [data-theme="skeuo"] {
-    /* Material tokens: the public knobs of this theme. */
-    --mat-depth: 4px;
-    --mat-rim: 22%;
-    --mat-gloss: 12%;
-    --mat-highlight: 0.35;
-    --mat-shadow: 6px;
-
     /* MARK: Button */
     .cn-button {
-      /* Scheme-dependent internals. They sit on the button and switch through the `dark`
+      /* Scheme-dependent defaults. They sit on the button and switch through the `dark`
          variant, so dark mode follows the same rule as the base theme. */
-      --skeuo-shadow: oklch(0.2 0.02 260 / 0.28);
-      --skeuo-shadow-pressed: oklch(0.2 0.02 260 / 0.24);
-      --skeuo-highlight-scale: 1;
-      --skeuo-hover: brightness(1.06);
-      --skeuo-ring: color-mix(in oklab, var(--ring), var(--foreground) 55%);
-      /* Darkened (light) or dark text (dark) so the label keeps 4.5:1 on the face. */
-      --skeuo-destructive-face: color-mix(
+      --skeuo-split: var(--mat-face-split, 0.5);
+      --skeuo-edge-darken: var(--mat-edge-darken, 10);
+      --skeuo-glow-alpha: var(--mat-glow-alpha, 75);
+      --skeuo-contact-alpha: var(--mat-contact-alpha, 13);
+      --skeuo-lift-alpha: var(--mat-lift-alpha, 16);
+      --skeuo-press-alpha: var(--mat-press-alpha, 26);
+      /* The default key's face never goes darker than neutral-700, so shading stays visible. */
+      --skeuo-solid-floor: 0.371;
+      /* Destructive face: share of --destructive over transparent (top, bottom) per state, around
+         shadcn's light red (10% rest, 20% hover; 20% and 30% in dark). */
+      --skeuo-dst-top: 8%;
+      --skeuo-dst-bottom: 12%;
+      --skeuo-dst-hover-top: 18%;
+      --skeuo-dst-hover-bottom: 22%;
+      --skeuo-dst-press-top: 22%;
+      --skeuo-dst-press-bottom: 18%;
+      /* Light keys (secondary, outline, destructive, ghost). */
+      --skeuo-light-highlight: rgb(255 255 255 / 0.75);
+      --skeuo-light-line: rgb(0 0 0 / 0.036);
+      --skeuo-light-contact: rgb(0 0 0 / 0.049);
+      --skeuo-light-lift: rgb(0 0 0 / 0.065);
+      --skeuo-light-press: rgb(0 0 0 / 0.106);
+      --skeuo-ghost-press: rgb(0 0 0 / 0.081);
+      --skeuo-lip: rgb(255 255 255 / 0.9);
+      /* Secondary face: lightness offsets from --secondary (top, bottom) per state. */
+      --skeuo-sec-top: 0.001;
+      --skeuo-sec-bottom: -0.016;
+      --skeuo-sec-hover-top: 0.009;
+      --skeuo-sec-hover-bottom: -0.006;
+      --skeuo-sec-press-top: -0.03;
+      --skeuo-sec-press-bottom: -0.016;
+      --skeuo-sec-edge: color-mix(in oklab, var(--foreground) 12%, transparent);
+      /* Outline face: share of --foreground mixed into --background (top, bottom) per state. */
+      --skeuo-out-top: 0%;
+      --skeuo-out-bottom: 3%;
+      --skeuo-out-hover-top: 0%;
+      --skeuo-out-hover-bottom: 1%;
+      --skeuo-out-press-top: 6%;
+      --skeuo-out-press-bottom: 3%;
+      /* Ghost face: --foreground alpha per state. */
+      --skeuo-ghost-hover: 3.98%;
+      --skeuo-ghost-press-top: 8.24%;
+      --skeuo-ghost-press-bottom: 6.32%;
+      /* Ring and border colors for aria-invalid and the destructive focus ring, as in base.css. */
+      --skeuo-danger-ring: color-mix(
         in oklab,
-        var(--destructive),
-        #000 32%
+        var(--destructive) 20%,
+        transparent
       );
-      --skeuo-destructive-on: oklch(0.985 0 0);
+      --skeuo-invalid-border: var(--destructive);
 
       @variant dark {
-        --skeuo-shadow: oklch(0 0 0 / 0.7);
-        --skeuo-shadow-pressed: oklch(0 0 0 / 0.6);
-        --skeuo-highlight-scale: 0.55;
-        --skeuo-hover: brightness(1.12);
-        --skeuo-ring: color-mix(in oklab, var(--ring), var(--foreground) 65%);
-        --skeuo-destructive-face: var(--destructive);
-        --skeuo-destructive-on: oklch(0.145 0 0);
+        --skeuo-split: var(--mat-face-split, 1);
+        --skeuo-edge-darken: var(--mat-edge-darken, 15);
+        --skeuo-glow-alpha: var(--mat-glow-alpha, 45);
+        --skeuo-contact-alpha: var(--mat-contact-alpha, 40);
+        --skeuo-lift-alpha: var(--mat-lift-alpha, 42);
+        --skeuo-press-alpha: var(--mat-press-alpha, 34);
+        --skeuo-solid-floor: 0;
+        --skeuo-dst-top: 22%;
+        --skeuo-dst-bottom: 18%;
+        --skeuo-dst-hover-top: 32%;
+        --skeuo-dst-hover-bottom: 28%;
+        --skeuo-dst-press-top: 28%;
+        --skeuo-dst-press-bottom: 32%;
+        --skeuo-light-highlight: rgb(255 255 255 / 0.065);
+        --skeuo-light-line: rgb(0 0 0 / 0.19);
+        --skeuo-light-contact: rgb(0 0 0 / 0.36);
+        --skeuo-light-lift: rgb(0 0 0 / 0.38);
+        --skeuo-light-press: rgb(0 0 0 / 0.425);
+        --skeuo-ghost-press: rgb(0 0 0 / 0.38);
+        --skeuo-lip: rgb(255 255 255 / 0.05);
+        --skeuo-sec-top: 0.012;
+        --skeuo-sec-bottom: -0.022;
+        --skeuo-sec-hover-top: 0.04;
+        --skeuo-sec-hover-bottom: 0.006;
+        --skeuo-sec-press-top: -0.045;
+        --skeuo-sec-press-bottom: -0.022;
+        --skeuo-sec-edge: rgb(0 0 0 / 0.7);
+        --skeuo-out-top: 9%;
+        --skeuo-out-bottom: 5%;
+        --skeuo-out-hover-top: 12%;
+        --skeuo-out-hover-bottom: 8%;
+        --skeuo-out-press-top: 3%;
+        --skeuo-out-press-bottom: 5%;
+        --skeuo-ghost-hover: 7.97%;
+        --skeuo-ghost-press-top: 7.45%;
+        --skeuo-ghost-press-bottom: 5.8%;
+        --skeuo-danger-ring: color-mix(
+          in oklab,
+          var(--destructive) 40%,
+          transparent
+        );
+        --skeuo-invalid-border: color-mix(
+          in oklab,
+          var(--destructive) 50%,
+          transparent
+        );
       }
 
-      --skeuo-depth: var(--mat-depth);
-      /* How far the face has sunk; set while pressed. */
-      --skeuo-press: 0px;
-      /* The face's 1px rim. Variants without a face color replace it. */
-      --skeuo-edge: inset 0 0 0 1px
-        var(
-          --skeuo-rim,
-          color-mix(
-            in oklab,
-            var(--skeuo-face),
-            #000 calc(var(--mat-rim) * 0.6)
-          )
-        );
+      /* Size scale for the geometry; the sizes below change it. */
+      --skeuo-scale: 1;
 
-      position: relative;
-      isolation: isolate;
+      /* Solid face (default): --skeuo-tone with only OKLCH lightness changed. */
+      --skeuo-step: calc(var(--mat-face-step, 9) / 100);
+      --skeuo-lift: calc(var(--mat-hover-lift, 6) / 100);
+      --skeuo-top: calc(var(--skeuo-step) * (1 - var(--skeuo-split)));
+      --skeuo-bottom: calc(var(--skeuo-step) * var(--skeuo-split));
+      --skeuo-pressed: calc(
+        var(--skeuo-bottom) + var(--mat-press-darken, 7) / 100
+      );
+
+      /* Layer values. Variants and states change these, never the box-shadow list. */
+      --skeuo-top-y: 1px;
+      --skeuo-top-blur: 1px;
+      --skeuo-top-color: transparent;
+      --skeuo-line-color: transparent;
+      --skeuo-contact-y: calc(var(--mat-contact-y, 0.6px) * var(--skeuo-scale));
+      --skeuo-contact-blur: calc(
+        var(--mat-contact-blur, 1.2px) * var(--skeuo-scale)
+      );
+      --skeuo-contact-color: transparent;
+      --skeuo-lift-rest-y: calc(var(--mat-lift-y, 2.4px) * var(--skeuo-scale));
+      --skeuo-lift-rest-blur: calc(
+        var(--mat-lift-blur, 6px) * var(--skeuo-scale)
+      );
+      --skeuo-lift-rest-spread: calc(
+        var(--mat-lift-spread, -1.8px) * var(--skeuo-scale)
+      );
+      --skeuo-lift-y: var(--skeuo-lift-rest-y);
+      --skeuo-lift-blur: var(--skeuo-lift-rest-blur);
+      --skeuo-lift-spread: var(--skeuo-lift-rest-spread);
+      --skeuo-lift-color: transparent;
+      --skeuo-lip-color: transparent;
+      --skeuo-ring: transparent;
+      --skeuo-sink: 0px;
+      --skeuo-face-top: transparent;
+      --skeuo-face-bottom: transparent;
+
       border-color: transparent;
-      border-radius: 8px;
+      border-radius: 10px;
       font-weight: 500;
       color: var(--skeuo-on);
-      outline: none;
+      /* The gradient is the face. Solid and secondary keys also set a background-color under
+         it, which is what shows if the browser cannot compute the gradient's colors. The
+         gradient spans the border box, so it runs once under the border instead of repeating. */
+      background-image: linear-gradient(
+        180deg,
+        var(--skeuo-face-top),
+        var(--skeuo-face-bottom)
+      );
+      background-origin: border-box;
+      box-shadow:
+        inset 0 var(--skeuo-top-y) var(--skeuo-top-blur) var(--skeuo-top-color),
+        inset 0 -1px 1px var(--skeuo-line-color),
+        0 var(--skeuo-contact-y) var(--skeuo-contact-blur)
+          var(--skeuo-contact-color),
+        0 var(--skeuo-lift-y) var(--skeuo-lift-blur) var(--skeuo-lift-spread)
+          var(--skeuo-lift-color),
+        0 1px 0 var(--skeuo-lip-color);
+      translate: 0 var(--skeuo-sink);
+      /* The focus and aria-invalid ring is an outline, so a consumer's shadow-* or ring-*
+         utility, which replaces box-shadow, does not remove it. */
+      outline: 3px solid var(--skeuo-ring);
+      outline-offset: 0;
+      transition:
+        translate 120ms ease-out,
+        box-shadow 140ms ease-out,
+        outline-color 140ms ease-out,
+        --skeuo-face-top 160ms ease-out,
+        --skeuo-face-bottom 160ms ease-out,
+        color 160ms ease-out,
+        border-color 160ms ease-out;
 
-      /* The ring is drawn with box-shadow; forced-colors mode drops it, so it gets an outline. */
+      /* shadcn's focus ring. A variant changes it through --skeuo-focus-ring and
+         --skeuo-focus-border, which nothing else declares, so source order does not matter. */
       &:focus-visible {
-        box-shadow:
-          0 0 0 2px var(--background),
-          0 0 0 4px var(--skeuo-ring);
+        border-color: var(--skeuo-focus-border, var(--ring));
+        --skeuo-ring: var(
+          --skeuo-focus-ring,
+          color-mix(in oklab, var(--ring) 50%, transparent)
+        );
       }
 
-      &[aria-invalid="true"] {
-        --skeuo-ring: var(--destructive);
-        box-shadow:
-          0 0 0 2px var(--background),
-          0 0 0 4px color-mix(in oklab, var(--destructive) 45%, transparent);
-      }
-
+      /* The :focus-visible form outranks the focus rule above, so a focused invalid button keeps
+         the invalid ring and border, as in base.css. */
+      &[aria-invalid="true"],
       &[aria-invalid="true"]:focus-visible {
-        box-shadow:
-          0 0 0 2px var(--background),
-          0 0 0 4px var(--skeuo-ring);
+        border-color: var(--skeuo-invalid-border);
+        --skeuo-ring: var(--skeuo-danger-ring);
       }
 
+      /* Forced-colors mode would paint the ring in a system color on every button, so only
+         focus gets an outline there. */
       @media (forced-colors: active) {
+        outline: none;
+
         &:focus-visible {
           outline: 2px solid CanvasText;
           outline-offset: 2px;
@@ -99,213 +311,351 @@
         opacity: 0.5;
       }
 
-      @variant hover {
-        & .cn-button-face::before {
-          filter: var(--skeuo-hover);
-        }
-      }
-
+      /* Pressing sinks the key. Menu triggers (aria-haspopup) do not press, as in the base theme.
+         A variant changes the depth through --skeuo-press-sink, which nothing else declares. */
       &:active:not([aria-haspopup]) {
-        --skeuo-press: max(0px, var(--skeuo-depth) - 1px);
-
-        & .cn-button-base {
-          box-shadow: 0 1px 2px var(--skeuo-shadow-pressed);
-        }
-      }
-    }
-
-    /* The slots are positioned against the button's padding box; -1px reaches over its border. */
-    .cn-button-base {
-      position: absolute;
-      inset: calc(var(--skeuo-depth) - 1px) -1px -1px;
-      border-radius: inherit;
-      background: var(
-        --skeuo-base,
-        color-mix(in oklab, var(--skeuo-face), #000 var(--mat-rim))
-      );
-      box-shadow: 0 calc(var(--skeuo-depth) * 0.5 + 1px) var(--mat-shadow)
-        var(--skeuo-shadow);
-      transition: box-shadow 80ms ease-out;
-    }
-
-    .cn-button-face {
-      display: contents;
-      border-radius: inherit;
-      gap: inherit;
-
-      &::before {
-        content: "";
-        position: absolute;
-        inset: -1px -1px calc(var(--skeuo-depth) - 1px);
-        border-radius: inherit;
-        background: linear-gradient(
-          180deg,
-          color-mix(in oklab, var(--skeuo-face), #fff var(--mat-gloss)),
-          var(--skeuo-face)
+        --skeuo-sink: var(
+          --skeuo-press-sink,
+          calc(var(--mat-press-y, 0.5px) * var(--skeuo-scale))
         );
-        box-shadow: var(--skeuo-edge);
-        translate: 0 var(--skeuo-press);
-        transition:
-          translate 80ms ease-out,
-          filter 150ms ease-out,
-          box-shadow 80ms ease-out;
       }
     }
 
+    .cn-button-base,
     .cn-button-highlight {
-      position: absolute;
-      inset: 0 0 auto;
-      height: calc((100% - var(--skeuo-depth)) * 0.48);
-      border-radius: inherit;
-      border-bottom-right-radius: 0;
-      border-bottom-left-radius: 0;
-      background: linear-gradient(
-        180deg,
-        rgb(
-          255 255 255 /
-            calc(var(--mat-highlight) * var(--skeuo-highlight-scale))
-        ),
-        rgb(255 255 255 / 0)
-      );
-      translate: 0 var(--skeuo-press);
-      transition: translate 80ms ease-out;
-      pointer-events: none;
+      display: none;
     }
 
-    /* Centered on the face rather than the frame, and sinks with it. */
+    .cn-button-face,
     .cn-button-label {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      gap: inherit;
-      translate: 0 calc(var(--skeuo-press) - var(--skeuo-depth) / 2);
-      transition: translate 80ms ease-out;
+      display: contents;
     }
 
-    /* Variants */
+    /* MARK: Solid key */
     .cn-button-variant-default {
-      --skeuo-face: var(--primary);
+      --skeuo-tone: oklch(
+        from var(--primary) max(l, var(--skeuo-solid-floor)) c h
+      );
       --skeuo-on: var(--primary-foreground);
+      background-color: var(--primary);
     }
 
+    .cn-button-variant-default {
+      --skeuo-face-top: oklch(
+        from var(--skeuo-tone) calc(l + (1 - l) * var(--skeuo-top)) c h
+      );
+      --skeuo-face-bottom: oklch(
+        from var(--skeuo-tone) calc(l * (1 - var(--skeuo-bottom))) c h
+      );
+      border-color: oklch(
+        from var(--skeuo-tone)
+          calc(l * (1 - var(--skeuo-pressed) - var(--skeuo-edge-darken) / 100))
+          c h / calc(var(--mat-edge-alpha, 100) / 100)
+      );
+      /* A white inner glow, offset down so the top is brightest. */
+      --skeuo-top-y: calc(var(--mat-glow-y, 0.3px) * var(--skeuo-scale));
+      --skeuo-top-blur: calc(var(--mat-glow-blur, 1.5px) * var(--skeuo-scale));
+      --skeuo-top-color: rgb(255 255 255 / calc(var(--skeuo-glow-alpha) / 100));
+      --skeuo-contact-color: rgb(
+        0 0 0 / calc(var(--skeuo-contact-alpha) / 100)
+      );
+      --skeuo-lift-color: rgb(0 0 0 / calc(var(--skeuo-lift-alpha) / 100));
+
+      @variant hover {
+        /* The bottom moves by lift − bottom darkening: lighter if positive, darker if negative. */
+        --skeuo-hover-bottom: calc(var(--skeuo-lift) - var(--skeuo-bottom));
+        --skeuo-face-top: oklch(
+          from var(--skeuo-tone)
+            calc(l + (1 - l) * (var(--skeuo-top) + var(--skeuo-lift))) c h
+        );
+        --skeuo-face-bottom: oklch(
+          from var(--skeuo-tone)
+            calc(
+              (l + (1 - l) * max(var(--skeuo-hover-bottom), 0)) *
+                (1 - max(-1 * var(--skeuo-hover-bottom), 0))
+            )
+            c h
+        );
+      }
+
+      /* The glow layer becomes the dark pressed shadow; the top darkens below the bottom. */
+      &:active:not([aria-haspopup]),
+      &[aria-expanded="true"] {
+        --skeuo-face-top: oklch(
+          from var(--skeuo-tone) calc(l * (1 - var(--skeuo-pressed))) c h
+        );
+        --skeuo-face-bottom: oklch(
+          from var(--skeuo-tone) calc(l * (1 - var(--skeuo-bottom))) c h
+        );
+        --skeuo-top-color: rgb(0 0 0 / calc(var(--skeuo-press-alpha) / 100));
+      }
+    }
+
+    /* MARK: Light keys */
     .cn-button-variant-secondary {
-      --skeuo-face: var(--secondary);
       --skeuo-on: var(--secondary-foreground);
+      background-color: var(--secondary);
+      --skeuo-face-top: oklch(
+        from var(--secondary) calc(l + var(--skeuo-sec-top)) c h
+      );
+      --skeuo-face-bottom: oklch(
+        from var(--secondary) calc(l + var(--skeuo-sec-bottom)) c h
+      );
+      border-color: var(--skeuo-sec-edge);
+
+      @variant hover {
+        --skeuo-face-top: oklch(
+          from var(--secondary) calc(l + var(--skeuo-sec-hover-top)) c h
+        );
+        --skeuo-face-bottom: oklch(
+          from var(--secondary) calc(l + var(--skeuo-sec-hover-bottom)) c h
+        );
+      }
+
+      &:active:not([aria-haspopup]),
+      &[aria-expanded="true"] {
+        --skeuo-face-top: oklch(
+          from var(--secondary) calc(l + var(--skeuo-sec-press-top)) c h
+        );
+        --skeuo-face-bottom: oklch(
+          from var(--secondary) calc(l + var(--skeuo-sec-press-bottom)) c h
+        );
+      }
     }
 
+    /* Destructive: shadcn's light red key (translucent --destructive, red label), with the
+       light-key material. Only color-mix, so it needs no fallback in older browsers. */
     .cn-button-variant-destructive {
-      --skeuo-face: var(--skeuo-destructive-face);
-      --skeuo-on: var(--skeuo-destructive-on);
-    }
-
-    .cn-button-variant-default,
-    .cn-button-variant-destructive {
-      text-shadow: 0 1px 0 rgb(0 0 0 / 0.16);
-    }
-
-    /* Outline: a shallow key with a rim and no fill color. */
-    .cn-button-variant-outline {
-      --skeuo-depth: calc(var(--mat-depth) * 0.5);
-      --skeuo-face: var(--background);
-      --skeuo-on: var(--foreground);
-      --skeuo-base: color-mix(
+      --skeuo-on: var(--destructive);
+      --skeuo-face-top: color-mix(
         in oklab,
-        var(--foreground) 22%,
+        var(--destructive) var(--skeuo-dst-top),
+        transparent
+      );
+      --skeuo-face-bottom: color-mix(
+        in oklab,
+        var(--destructive) var(--skeuo-dst-bottom),
+        transparent
+      );
+      border-color: color-mix(in oklab, var(--destructive) 40%, transparent);
+      --skeuo-focus-ring: var(--skeuo-danger-ring);
+      --skeuo-focus-border: color-mix(
+        in oklab,
+        var(--destructive) 40%,
+        transparent
+      );
+
+      @variant hover {
+        --skeuo-face-top: color-mix(
+          in oklab,
+          var(--destructive) var(--skeuo-dst-hover-top),
+          transparent
+        );
+        --skeuo-face-bottom: color-mix(
+          in oklab,
+          var(--destructive) var(--skeuo-dst-hover-bottom),
+          transparent
+        );
+      }
+
+      &:active:not([aria-haspopup]),
+      &[aria-expanded="true"] {
+        --skeuo-face-top: color-mix(
+          in oklab,
+          var(--destructive) var(--skeuo-dst-press-top),
+          transparent
+        );
+        --skeuo-face-bottom: color-mix(
+          in oklab,
+          var(--destructive) var(--skeuo-dst-press-bottom),
+          transparent
+        );
+      }
+    }
+
+    /* Outline: a raised key in the page color, with a foreground rim. */
+    .cn-button-variant-outline {
+      --skeuo-on: var(--foreground);
+      --skeuo-face-top: color-mix(
+        in oklab,
+        var(--foreground) var(--skeuo-out-top),
         var(--background)
       );
-      --skeuo-rim: color-mix(in oklab, var(--foreground) 20%, transparent);
+      --skeuo-face-bottom: color-mix(
+        in oklab,
+        var(--foreground) var(--skeuo-out-bottom),
+        var(--background)
+      );
+      border-color: color-mix(in oklab, var(--foreground) 15%, transparent);
 
-      & .cn-button-highlight {
-        display: none;
+      @variant hover {
+        --skeuo-face-top: color-mix(
+          in oklab,
+          var(--foreground) var(--skeuo-out-hover-top),
+          var(--background)
+        );
+        --skeuo-face-bottom: color-mix(
+          in oklab,
+          var(--foreground) var(--skeuo-out-hover-bottom),
+          var(--background)
+        );
+      }
+
+      &:active:not([aria-haspopup]),
+      &[aria-expanded="true"] {
+        --skeuo-face-top: color-mix(
+          in oklab,
+          var(--foreground) var(--skeuo-out-press-top),
+          var(--background)
+        );
+        --skeuo-face-bottom: color-mix(
+          in oklab,
+          var(--foreground) var(--skeuo-out-press-bottom),
+          var(--background)
+        );
       }
     }
 
-    /* Ghost and link carry no material. Link is a plain text link. */
-    .cn-button-variant-ghost,
-    .cn-button-variant-link {
-      --skeuo-depth: 0px;
-      --skeuo-edge: 0 0 #0000;
+    .cn-button-variant-secondary,
+    .cn-button-variant-outline,
+    .cn-button-variant-destructive {
+      --skeuo-top-color: var(--skeuo-light-highlight);
+      --skeuo-line-color: var(--skeuo-light-line);
+      --skeuo-contact-color: var(--skeuo-light-contact);
+      --skeuo-lift-color: var(--skeuo-light-lift);
 
-      & .cn-button-base,
-      & .cn-button-highlight {
-        display: none;
+      &:active:not([aria-haspopup]),
+      &[aria-expanded="true"] {
+        --skeuo-top-color: var(--skeuo-light-press);
       }
     }
 
+    /* Ghost: no face at rest, a light face on hover, a recess when pressed. */
     .cn-button-variant-ghost {
       --skeuo-on: var(--foreground);
 
-      & .cn-button-face::before {
-        background: transparent;
-      }
-
       @variant hover {
-        & .cn-button-face::before {
-          background: var(--muted);
-          filter: none;
-        }
+        --skeuo-face-top: color-mix(
+          in srgb,
+          var(--foreground) var(--skeuo-ghost-hover),
+          transparent
+        );
+        --skeuo-face-bottom: color-mix(
+          in srgb,
+          var(--foreground) var(--skeuo-ghost-hover),
+          transparent
+        );
       }
 
-      &:active:not([aria-haspopup]) .cn-button-face::before {
-        background: var(--muted);
-        box-shadow: inset 0 1px 3px var(--skeuo-shadow);
+      &:active:not([aria-haspopup]),
+      &[aria-expanded="true"] {
+        --skeuo-face-top: color-mix(
+          in srgb,
+          var(--foreground) var(--skeuo-ghost-press-top),
+          transparent
+        );
+        --skeuo-face-bottom: color-mix(
+          in srgb,
+          var(--foreground) var(--skeuo-ghost-press-bottom),
+          transparent
+        );
+        --skeuo-top-color: var(--skeuo-ghost-press);
       }
     }
 
+    /* Hover raises the keys that have a face. */
+    .cn-button-variant-default,
+    .cn-button-variant-destructive,
+    .cn-button-variant-secondary,
+    .cn-button-variant-outline {
+      @variant hover {
+        --skeuo-lift-y: calc(var(--mat-hover-y, 4.8px) * var(--skeuo-scale));
+        --skeuo-lift-blur: calc(
+          var(--mat-hover-blur, 9.6px) * var(--skeuo-scale)
+        );
+        --skeuo-lift-spread: calc(
+          var(--mat-hover-spread, -3px) * var(--skeuo-scale)
+        );
+      }
+    }
+
+    /* Pressed, shared by every key: the top layer is the pressed shadow, the bottom line and
+       lift shadow go, the contact shadow shrinks to 1px, and light keys get a lip. */
+    .cn-button-variant-default,
+    .cn-button-variant-destructive,
+    .cn-button-variant-secondary,
+    .cn-button-variant-outline,
+    .cn-button-variant-ghost {
+      &:active:not([aria-haspopup]),
+      &[aria-expanded="true"] {
+        --skeuo-top-y: 1px;
+        --skeuo-top-blur: calc(
+          var(--mat-press-blur, 1.5px) * var(--skeuo-scale)
+        );
+        --skeuo-line-color: transparent;
+        --skeuo-contact-y: 1px;
+        --skeuo-contact-blur: 1px;
+        /* The lift shadow shrinks back to its rest size while it fades. */
+        --skeuo-lift-y: var(--skeuo-lift-rest-y);
+        --skeuo-lift-blur: var(--skeuo-lift-rest-blur);
+        --skeuo-lift-spread: var(--skeuo-lift-rest-spread);
+        --skeuo-lift-color: transparent;
+      }
+    }
+
+    .cn-button-variant-secondary,
+    .cn-button-variant-outline,
+    .cn-button-variant-destructive,
+    .cn-button-variant-ghost {
+      &:active:not([aria-haspopup]),
+      &[aria-expanded="true"] {
+        --skeuo-lip-color: var(--skeuo-lip);
+      }
+    }
+
+    /* Link: stock shadcn. A text link with no material that sinks 1px when pressed. */
     .cn-button-variant-link {
       --skeuo-on: var(--primary);
-
-      & .cn-button-face::before {
-        content: none;
-      }
-
-      & .cn-button-label {
-        text-underline-offset: 4px;
-      }
+      --skeuo-press-sink: 1px;
+      text-underline-offset: 4px;
 
       @variant hover {
-        & .cn-button-label {
-          text-decoration-line: underline;
-        }
+        text-decoration-line: underline;
       }
     }
 
-    /* Sizes: the component owns the frame; the theme only rounds it. */
+    /* Sizes: the component owns the frame; the theme sets the radius and the geometry scale. */
     .cn-button-size-xs,
     .cn-button-size-icon-xs {
-      border-radius: 6px;
+      --skeuo-scale: 0.75;
+      border-radius: 8px;
     }
 
     .cn-button-size-sm,
     .cn-button-size-icon-sm {
-      border-radius: 7px;
+      --skeuo-scale: 0.875;
+      border-radius: 8px;
     }
 
     .cn-button-size-lg,
     .cn-button-size-icon-lg {
-      border-radius: 9px;
+      --skeuo-scale: 1.125;
     }
   }
 
-  /* Reduced motion: pressing changes only shadows, the face does not move. */
+  /* Without OKLCH relative colors the default key's border would fall back to the label color;
+     a darker mix of the key color stands in for the computed edge. */
+  @supports not (color: oklch(from red calc(l * 1) c h)) {
+    [data-theme="skeuo"] .cn-button-variant-default {
+      border-color: color-mix(in oklab, var(--primary) 80%, black);
+    }
+  }
+
+  /* Reduced motion: pressing changes shadows and face color only; the key does not move. */
   @media (prefers-reduced-motion: reduce) {
-    [data-theme="skeuo"] {
-      .cn-button-face::before,
-      .cn-button-base,
-      .cn-button-highlight,
-      .cn-button-label {
-        transition: none;
-      }
-
-      .cn-button:active:not([aria-haspopup]) {
-        --skeuo-press: 0px;
-
-        & .cn-button-face::before {
-          box-shadow:
-            var(--skeuo-edge),
-            inset 0 2px 5px var(--skeuo-shadow);
-        }
-      }
+    [data-theme="skeuo"] .cn-button {
+      transition: none;
+      translate: none;
     }
   }
 }
