@@ -1,0 +1,24 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "button",
+  "title": "Button",
+  "description": "Button with base / face / highlight / label decoration slots. Styled by a facet theme.",
+  "dependencies": [
+    "@base-ui/react",
+    "class-variance-authority",
+    "cn"
+  ],
+  "registryDependencies": [
+    "@facet/theme-base"
+  ],
+  "files": [
+    {
+      "path": "src/components/ui/button.tsx",
+      "content": "import { Button as ButtonPrimitive } from \"@base-ui/react/button\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"cn\";\n\nconst buttonVariants = cva(\n  \"cn-button group/button inline-flex shrink-0 items-center justify-center border text-sm whitespace-nowrap select-none disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4\",\n  {\n    variants: {\n      variant: {\n        default: \"cn-button-variant-default\",\n        outline: \"cn-button-variant-outline\",\n        secondary: \"cn-button-variant-secondary\",\n        ghost: \"cn-button-variant-ghost\",\n        destructive: \"cn-button-variant-destructive\",\n        link: \"cn-button-variant-link\",\n      },\n      size: {\n        default:\n          \"cn-button-size-default h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2\",\n        xs: \"cn-button-size-xs h-6 gap-1 px-2 text-xs has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3\",\n        sm: \"cn-button-size-sm h-7 gap-1 px-2.5 text-[0.8rem] has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5\",\n        lg: \"cn-button-size-lg h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2\",\n        icon: \"cn-button-size-icon size-8\",\n        \"icon-xs\":\n          \"cn-button-size-icon-xs size-6 [&_svg:not([class*='size-'])]:size-3\",\n        \"icon-sm\": \"cn-button-size-icon-sm size-7\",\n        \"icon-lg\": \"cn-button-size-icon-lg size-9\",\n      },\n    },\n    defaultVariants: {\n      variant: \"default\",\n      size: \"default\",\n    },\n  },\n);\n\n// Layout and size live here, so every theme draws inside the same frame (ADR 0005).\n// Everything visual, including focus, disabled and transitions, comes from the theme CSS.\n// The four decoration slots are always rendered; a theme that does not use one hides it.\nfunction Button({\n  className,\n  variant = \"default\",\n  size = \"default\",\n  children,\n  ...props\n}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {\n  return (\n    <ButtonPrimitive\n      data-slot=\"button\"\n      className={cn(buttonVariants({ variant, size, className }))}\n      {...props}\n    >\n      <span\n        data-slot=\"button-base\"\n        className=\"cn-button-base\"\n        aria-hidden=\"true\"\n      />\n      <span data-slot=\"button-face\" className=\"cn-button-face\">\n        <span\n          data-slot=\"button-highlight\"\n          className=\"cn-button-highlight\"\n          aria-hidden=\"true\"\n        />\n        <span data-slot=\"button-label\" className=\"cn-button-label\">\n          {children}\n        </span>\n      </span>\n    </ButtonPrimitive>\n  );\n}\n\nexport { Button, buttonVariants };\n",
+      "type": "registry:file",
+      "target": "@ui/button.tsx"
+    }
+  ],
+  "docs": "The button has no look until a theme is active. This item also installs the base theme (themes/base.css): @import it from the CSS file that has @import \"tailwindcss\", and set data-theme=\"base\" on an ancestor, e.g. <html>. For the skeuo theme: npx shadcn add @facet/theme-skeuo, @import themes/skeuo.css, set data-theme=\"skeuo\". Needs a Base UI shadcn project (style base-*); it replaces your ui/button.tsx.",
+  "type": "registry:item"
+}

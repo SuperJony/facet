@@ -1,0 +1,51 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "facet",
+  "homepage": "https://github.com/SuperJony/facet",
+  "items": [
+    {
+      "name": "button",
+      "type": "registry:item",
+      "title": "Button",
+      "description": "Button with base / face / highlight / label decoration slots. Styled by a facet theme.",
+      "dependencies": ["@base-ui/react", "class-variance-authority", "cn"],
+      "registryDependencies": ["@facet/theme-base"],
+      "docs": "The button has no look until a theme is active. This item also installs the base theme (themes/base.css): @import it from the CSS file that has @import \"tailwindcss\", and set data-theme=\"base\" on an ancestor, e.g. <html>. For the skeuo theme: npx shadcn add @facet/theme-skeuo, @import themes/skeuo.css, set data-theme=\"skeuo\". Needs a Base UI shadcn project (style base-*); it replaces your ui/button.tsx.",
+      "files": [
+        {
+          "path": "src/components/ui/button.tsx",
+          "type": "registry:file",
+          "target": "@ui/button.tsx"
+        }
+      ]
+    },
+    {
+      "name": "theme-base",
+      "type": "registry:item",
+      "title": "Base theme",
+      "description": "shadcn's nova style as a runtime theme, scoped to [data-theme=\"base\"].",
+      "files": [
+        {
+          "path": "src/themes/base.css",
+          "type": "registry:file",
+          "target": "themes/base.css"
+        }
+      ],
+      "docs": "Each theme needs two steps: @import its CSS from the CSS file that has @import \"tailwindcss\" (the path is where the file was installed), and set data-theme=\"base\" on an ancestor, e.g. <html>."
+    },
+    {
+      "name": "theme-skeuo",
+      "type": "registry:item",
+      "title": "Skeuo theme",
+      "description": "Skeuomorphic theme scoped to [data-theme=\"skeuo\"], tuned by --mat-* material tokens.",
+      "files": [
+        {
+          "path": "src/themes/skeuo.css",
+          "type": "registry:file",
+          "target": "themes/skeuo.css"
+        }
+      ],
+      "docs": "Each theme needs two steps: @import its CSS from the CSS file that has @import \"tailwindcss\" (the path is where the file was installed), and set data-theme=\"skeuo\" on an ancestor, e.g. <html>."
+    }
+  ]
+}
