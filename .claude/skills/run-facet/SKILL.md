@@ -1,6 +1,6 @@
 ---
 name: run-facet
-description: Build, serve and drive the facet showcase in a real browser to see a theme or Button change working (hover, press, focus, panel export). Use when verifying or demoing a change to src/themes/*, src/components/ui/button.tsx or src/showcase/*.
+description: Build, serve and drive the facet showcase in a real browser to see a component or theme change working (hover, press, focus, panel export). Use when verifying or demoing a change to a component or theme in registry.json, or to src/showcase/*.
 ---
 
 # Run facet
