@@ -30,10 +30,13 @@ bunx vite preview --port 4180 --strictPort   # run in the background
 - Matrix buttons: `[data-testid=matrix] .cn-button-variant-<v>.cn-button-size-<s>`.
   The single view: `getByTestId("stage").locator(".cn-button")`.
 
-## Drive it (Playwright from node_modules)
+## Drive it (Playwright)
+
+Node resolves `@playwright/test` relative to the script file, so save the script in the repo
+root (for example `drive.mjs`, deleted afterwards) and run it with `node drive.mjs`.
 
 ```js
-import { chromium } from "/Users/jony/Developer/Front/facet/node_modules/playwright/index.mjs"
+import { chromium } from "@playwright/test"
 const b = await chromium.launch()
 const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, permissions: ["clipboard-read", "clipboard-write"] })
 const p = await ctx.newPage()
