@@ -31,57 +31,258 @@ export const PREVIEW_CLASS: Record<PreviewState, string> = {
   focus: ":focus-visible",
 };
 
-// Mirrors the --mat-* defaults declared in src/themes/skeuo.css.
+// The --mat-* defaults (default size, light / dark). They repeat the var() fallbacks in
+// src/themes/skeuo.css; tests/tokens.spec.ts fails when the two diverge.
+// Percentages are plain numbers in CSS (9 means 9%), so `unit` is what the value is written with
+// and `suffix` is only shown in the panel.
 export const MAT_TOKENS = [
   {
-    key: "--mat-depth",
-    label: "厚度",
-    min: 0,
-    max: 8,
-    step: 1,
-    unit: "px",
-    default: 4,
-  },
-  {
-    key: "--mat-rim",
-    label: "底座加深",
-    min: 0,
-    max: 50,
-    step: 1,
-    unit: "%",
-    default: 22,
-  },
-  {
-    key: "--mat-gloss",
-    label: "面光泽",
+    group: "面",
+    key: "--mat-face-step",
+    label: "面明暗差",
     min: 0,
     max: 30,
     step: 1,
-    unit: "%",
-    default: 12,
-  },
-  {
-    key: "--mat-highlight",
-    label: "高光强度",
-    min: 0,
-    max: 0.6,
-    step: 0.01,
     unit: "",
-    default: 0.35,
+    suffix: "%",
+    default: { light: 9, dark: 9 },
   },
   {
-    key: "--mat-shadow",
-    label: "投影模糊",
+    group: "面",
+    key: "--mat-face-split",
+    label: "分配 s（0 只提亮顶部，1 只压暗底部）",
+    min: 0,
+    max: 1,
+    step: 0.05,
+    unit: "",
+    suffix: "",
+    default: { light: 0.5, dark: 1 },
+  },
+  {
+    group: "面",
+    key: "--mat-hover-lift",
+    label: "悬停整体提亮",
+    min: 0,
+    max: 15,
+    step: 1,
+    unit: "",
+    suffix: "%",
+    default: { light: 6, dark: 6 },
+  },
+  {
+    group: "面",
+    key: "--mat-press-darken",
+    label: "按下比底部再压暗",
+    min: 0,
+    max: 25,
+    step: 1,
+    unit: "",
+    suffix: "%",
+    default: { light: 7, dark: 7 },
+  },
+  {
+    group: "边",
+    key: "--mat-edge-darken",
+    label: "比按下顶部再压暗",
+    min: 0,
+    max: 40,
+    step: 1,
+    unit: "",
+    suffix: "%",
+    default: { light: 10, dark: 15 },
+  },
+  {
+    group: "边",
+    key: "--mat-edge-alpha",
+    label: "描边不透明度",
+    min: 0,
+    max: 100,
+    step: 1,
+    unit: "",
+    suffix: "%",
+    default: { light: 100, dark: 100 },
+  },
+  {
+    group: "白色内阴影",
+    key: "--mat-glow-alpha",
+    label: "不透明度",
+    min: 0,
+    max: 100,
+    step: 1,
+    unit: "",
+    suffix: "%",
+    default: { light: 75, dark: 45 },
+  },
+  {
+    group: "白色内阴影",
+    key: "--mat-glow-blur",
+    label: "模糊",
+    min: 0,
+    max: 6,
+    step: 0.1,
+    unit: "px",
+    suffix: "px",
+    default: { light: 1.5, dark: 1.5 },
+  },
+  {
+    group: "白色内阴影",
+    key: "--mat-glow-y",
+    label: "偏移（正值往下）",
+    min: -2,
+    max: 2,
+    step: 0.05,
+    unit: "px",
+    suffix: "px",
+    default: { light: 0.3, dark: 0.3 },
+  },
+  {
+    group: "贴地投影",
+    key: "--mat-contact-y",
+    label: "y 偏移",
+    min: 0,
+    max: 4,
+    step: 0.1,
+    unit: "px",
+    suffix: "px",
+    default: { light: 0.6, dark: 0.6 },
+  },
+  {
+    group: "贴地投影",
+    key: "--mat-contact-blur",
+    label: "模糊",
+    min: 0,
+    max: 6,
+    step: 0.1,
+    unit: "px",
+    suffix: "px",
+    default: { light: 1.2, dark: 1.2 },
+  },
+  {
+    group: "贴地投影",
+    key: "--mat-contact-alpha",
+    label: "不透明度",
+    min: 0,
+    max: 70,
+    step: 1,
+    unit: "",
+    suffix: "%",
+    default: { light: 13, dark: 40 },
+  },
+  {
+    group: "浮起投影",
+    key: "--mat-lift-y",
+    label: "y 偏移",
+    min: 0,
+    max: 12,
+    step: 0.1,
+    unit: "px",
+    suffix: "px",
+    default: { light: 2.4, dark: 2.4 },
+  },
+  {
+    group: "浮起投影",
+    key: "--mat-lift-blur",
+    label: "模糊",
+    min: 0,
+    max: 24,
+    step: 0.1,
+    unit: "px",
+    suffix: "px",
+    default: { light: 6, dark: 6 },
+  },
+  {
+    group: "浮起投影",
+    key: "--mat-lift-spread",
+    label: "扩散",
+    min: -10,
+    max: 4,
+    step: 0.1,
+    unit: "px",
+    suffix: "px",
+    default: { light: -1.8, dark: -1.8 },
+  },
+  {
+    group: "浮起投影",
+    key: "--mat-lift-alpha",
+    label: "不透明度",
+    min: 0,
+    max: 70,
+    step: 1,
+    unit: "",
+    suffix: "%",
+    default: { light: 16, dark: 42 },
+  },
+  {
+    group: "悬停",
+    key: "--mat-hover-y",
+    label: "y 偏移",
     min: 0,
     max: 16,
-    step: 1,
+    step: 0.1,
     unit: "px",
-    default: 6,
+    suffix: "px",
+    default: { light: 4.8, dark: 4.8 },
+  },
+  {
+    group: "悬停",
+    key: "--mat-hover-blur",
+    label: "模糊",
+    min: 0,
+    max: 30,
+    step: 0.1,
+    unit: "px",
+    suffix: "px",
+    default: { light: 9.6, dark: 9.6 },
+  },
+  {
+    group: "悬停",
+    key: "--mat-hover-spread",
+    label: "扩散",
+    min: -12,
+    max: 4,
+    step: 0.1,
+    unit: "px",
+    suffix: "px",
+    default: { light: -3, dark: -3 },
+  },
+  {
+    group: "按下",
+    key: "--mat-press-y",
+    label: "下沉",
+    min: 0,
+    max: 3,
+    step: 0.05,
+    unit: "px",
+    suffix: "px",
+    default: { light: 0.5, dark: 0.5 },
+  },
+  {
+    group: "按下",
+    key: "--mat-press-blur",
+    label: "内阴影模糊",
+    min: 0,
+    max: 6,
+    step: 0.1,
+    unit: "px",
+    suffix: "px",
+    default: { light: 1.5, dark: 1.5 },
+  },
+  {
+    group: "按下",
+    key: "--mat-press-alpha",
+    label: "内阴影不透明度",
+    min: 0,
+    max: 70,
+    step: 1,
+    unit: "",
+    suffix: "%",
+    default: { light: 26, dark: 34 },
   },
 ] as const;
 
 export type MatKey = (typeof MAT_TOKENS)[number]["key"];
 export type MatValues = Partial<Record<MatKey, number>>;
+export type MatState = Record<Scheme, MatValues>;
 
 export type ShowcaseState = {
   theme: Theme;
@@ -92,7 +293,7 @@ export type ShowcaseState = {
   col: AxisProp;
   fixed: ButtonProps;
   label: string;
-  mat: MatValues;
+  mat: MatState;
 };
 
 function pick<T extends string>(
@@ -121,7 +322,7 @@ export function readUrl(): ShowcaseState {
     col: col === row ? (row === "size" ? "variant" : "size") : col,
     fixed: { variant: "default", size: "default", disabled: false },
     label: "Button",
-    mat: {},
+    mat: { light: {}, dark: {} },
   };
 }
 
@@ -175,9 +376,31 @@ export function useShowcaseState() {
   return { state, update, setAxis };
 }
 
-export function matCss(mat: MatValues) {
-  const lines = MAT_TOKENS.map(
-    (t) => `  ${t.key}: ${mat[t.key] ?? t.default}${t.unit};`,
+// Only the tokens that differ from the defaults, scoped the way the theme scopes itself: on
+// skeuo buttons, with dark as `.dark` on any ancestor of the button (the theme's `dark` variant
+// compiles to `:is(.dark *)`). The light block also applies in dark mode, so a token changed in
+// light is repeated in the dark block with its dark value; a token changed only in dark is
+// written only there, so it leaves the consumer's light setting alone.
+const LIGHT_SCOPE = '[data-theme="skeuo"] .cn-button';
+const DARK_SCOPE = '[data-theme="skeuo"] .cn-button:is(.dark *)';
+
+export function matCss(mat: MatState) {
+  const value = (t: (typeof MAT_TOKENS)[number], scheme: Scheme) =>
+    mat[scheme][t.key] ?? t.default[scheme];
+  const changedIn = (scheme: Scheme) =>
+    MAT_TOKENS.filter((t) => value(t, scheme) !== t.default[scheme]);
+  const light = changedIn("light");
+  const dark = MAT_TOKENS.filter(
+    (t) => light.includes(t) || changedIn("dark").includes(t),
   );
-  return `[data-theme="skeuo"] {\n${lines.join("\n")}\n}`;
+  if (dark.length === 0) return "/* 所有材质参数都是默认值，没有要导出的。 */";
+  const block = (selector: string, tokens: typeof dark, scheme: Scheme) =>
+    `${selector} {\n${tokens
+      .map((t) => `  ${t.key}: ${value(t, scheme)}${t.unit};`)
+      .join("\n")}\n}`;
+  return [
+    ...(light.length ? [block(LIGHT_SCOPE, light, "light")] : []),
+    "/* 暗色按按钮祖先上的 .dark 类判断。用媒体查询或别的选择器切换暗色时，把下面的选择器换成对应写法。 */",
+    block(DARK_SCOPE, dark, "dark"),
+  ].join("\n\n");
 }

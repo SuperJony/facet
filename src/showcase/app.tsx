@@ -73,10 +73,11 @@ function AxisSelect({
 
 export function App() {
   const { state, update, setAxis } = useShowcaseState()
+  const mat = state.mat[state.scheme]
   const matStyle = Object.fromEntries(
-    MAT_TOKENS.filter((t) => state.mat[t.key] !== undefined).map((t) => [
+    MAT_TOKENS.filter((t) => mat[t.key] !== undefined).map((t) => [
       t.key,
-      `${state.mat[t.key]}${t.unit}`,
+      `${mat[t.key]}${t.unit}`,
     ]),
   ) as CSSProperties
 

@@ -143,10 +143,17 @@ function ParamsTab({
   update: Update;
 }) {
   const [copied, setCopied] = useState(false);
+  // The panel edits the values of the scheme on screen; each scheme keeps its own.
+  const mat = state.mat[state.scheme];
   const set = (key: MatKey, n: number) => {
     if (Number.isNaN(n)) return;
     const { min, max } = MAT_TOKENS.find((t) => t.key === key)!;
-    update({ mat: { ...state.mat, [key]: Math.min(max, Math.max(min, n)) } });
+    update({
+      mat: {
+        ...state.mat,
+        [state.scheme]: { ...mat, [key]: Math.min(max, Math.max(min, n)) },
+      },
+    });
     setCopied(false);
   };
 
@@ -158,11 +165,20 @@ function ParamsTab({
           基线主题不读取这些参数，切到 Skeuo 才能看到变化。
         </p>
       )}
-      {MAT_TOKENS.map((t) => {
-        const value = state.mat[t.key] ?? t.default;
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        正在调{state.scheme === "dark" ? "暗色" : "亮色"}，亮暗各有一套。数值是
+        default 尺寸下的，其他尺寸按比例缩放。
+      </p>
+      {MAT_TOKENS.map((t, i) => {
+        const value = mat[t.key] ?? t.default[state.scheme];
         const id = `mat-${t.key}`;
         return (
           <div key={t.key} className="flex flex-col gap-3">
+            {MAT_TOKENS[i - 1]?.group !== t.group && (
+              <h3 className="pt-3 text-xs font-semibold text-muted-foreground">
+                {t.group}
+              </h3>
+            )}
             <div className="flex items-baseline justify-between gap-2">
               <Label htmlFor={id} className="text-[13px]">
                 {t.label}
@@ -195,7 +211,7 @@ function ParamsTab({
                   className="h-7 pr-6 text-right font-mono text-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center font-mono text-[11px] text-muted-foreground">
-                  {t.unit}
+                  {t.suffix}
                 </span>
               </div>
             </div>
@@ -206,7 +222,7 @@ function ParamsTab({
         <Button
           variant="outline"
           onClick={() => {
-            update({ mat: {} });
+            update({ mat: { ...state.mat, [state.scheme]: {} } });
             setCopied(false);
           }}
         >
