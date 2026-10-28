@@ -78,6 +78,8 @@ registry 托管在 GitHub 仓库 `SuperJony/facet`，有两种装法。
 
 ## 展示站
 
+在线预览：<https://superjony.github.io/facet/>。每次推送到 main，由 `.github/workflows/pages.yml` 构建并发布到 GitHub Pages。
+
 - **屏幕宽度**：只适配桌面端，最小宽度 1024px（Tailwind `lg` 断点），不做移动端布局；窄于 1024px 时页面横向滚动。
 - **页面结构**：左边组件列表，中间舞台，右边面板。顶栏左侧是库名和版本，右侧是主题切换（base / skeuo）和亮暗切换。
 - **舞台**：有单个和矩阵两种视图。矩阵的两个轴从 variant、size、disabled 中选；选了另一个轴正在用的 prop，两个轴会互换；表格左上角是对角斜分的表头格。舞台底部左侧是代码行，右侧是预览状态下拉（rest / hover / pressed / focus），单个和矩阵两种视图都跟着它变。
