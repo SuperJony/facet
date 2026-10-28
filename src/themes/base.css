@@ -1,0 +1,77 @@
+/*
+ * facet base theme: shadcn's nova style, ported as-is and scoped to [data-theme="base"].
+ * Source: shadcn-ui/ui apps/v4/registry/styles/style-nova.css (the .cn-button* rules).
+ * Sizes (height, padding, gap, font size, icon size) and the 1px border width live in the
+ * component, so they are not repeated here. nova's visual classes that sat in the component's
+ * base class (transition, outline, disabled opacity) moved here.
+ * It reads the shadcn semantic colors and ignores --mat-* material tokens.
+ * Import it from the CSS entry that has `@import "tailwindcss"` so @apply resolves.
+ */
+@layer components {
+  [data-theme="base"] {
+    /* MARK: Button */
+    .cn-button {
+      @apply focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 rounded-lg border-transparent bg-clip-padding font-medium transition-all outline-none focus-visible:ring-3 disabled:opacity-50 aria-invalid:ring-3 active:not-aria-[haspopup]:translate-y-px;
+
+      /* The ring is a box-shadow, which forced-colors mode drops; draw a system-color outline instead. */
+      @media (forced-colors: active) {
+        &:focus-visible {
+          outline: 2px solid CanvasText;
+          outline-offset: 2px;
+        }
+      }
+    }
+
+    /* nova has no decoration slots: base and highlight stay empty, face and label are transparent to layout. */
+    .cn-button-base,
+    .cn-button-highlight {
+      display: none;
+    }
+
+    .cn-button-face,
+    .cn-button-label {
+      display: contents;
+    }
+
+    .cn-button-variant-default {
+      @apply bg-primary text-primary-foreground hover:bg-primary/80;
+    }
+
+    .cn-button-variant-outline {
+      @apply border-border bg-background hover:bg-muted hover:text-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 aria-expanded:bg-muted aria-expanded:text-foreground;
+    }
+
+    .cn-button-variant-secondary {
+      @apply bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground;
+    }
+
+    .cn-button-variant-ghost {
+      @apply hover:bg-muted hover:text-foreground dark:hover:bg-muted/50 aria-expanded:bg-muted aria-expanded:text-foreground;
+    }
+
+    .cn-button-variant-destructive {
+      @apply bg-destructive/10 hover:bg-destructive/20 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/20 text-destructive focus-visible:border-destructive/40 dark:hover:bg-destructive/30;
+    }
+
+    .cn-button-variant-link {
+      @apply text-primary underline-offset-4 hover:underline;
+    }
+
+    /* Sizes: only radius differs. default, lg, icon and icon-lg keep the root's rounded-lg. */
+    .cn-button-size-xs {
+      @apply rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg;
+    }
+
+    .cn-button-size-sm {
+      @apply rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg;
+    }
+
+    .cn-button-size-icon-xs {
+      @apply rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg;
+    }
+
+    .cn-button-size-icon-sm {
+      @apply rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg;
+    }
+  }
+}
